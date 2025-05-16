@@ -1,0 +1,12 @@
+        # Insertar un documento de prueba
+        doc = {
+            "codigoPais": "002",
+            "nombrePais": "Ejemplo",
+            "capitalPais": "Capital Ejemplo",
+            "poblacion": 1000000
+        }
+        collection.insert_one(doc)
+        print("✅ Documento insertado correctamente.")
+
+        for doc in collection.find():
+            print(doc)

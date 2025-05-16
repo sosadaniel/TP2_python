@@ -1,0 +1,206 @@
+import requests
+from pymongo import MongoClient
+
+MONGO_URI = "mongodb://localhost:27017"
+DB_NAME = "paises_db"
+
+def fetch_country_data(code):
+    url = f"https://restcountries.com/v3.1/alpha/{code}"
+    response = requests.get(url)
+    
+    if response.status_code != 200:
+        return None  
+    
+    data = response.json()
+
+    if not data:
+        return None 
+
+    country = data[0]
+
+    return {
+        "codigoPais": country.get("ccn3", ""),
+        "nombrePais": country.get("name", {}).get("common", ""),
+        "capitalPais": country.get("capital", [""])[0] if "capital" in country else "",
+        "region": country.get("region", ""),
+        "subregion": country.get("subregion", ""),
+        "poblacion": country.get("population", 0),
+        "latitud": country.get("latlng", [0.0, 0.0])[0],
+        "longitud": country.get("latlng", [0.0, 0.0])[1],
+    }
+
+def conectar_mongo():
+    try:
+        client = MongoClient(MONGO_URI)
+        db = client[DB_NAME]
+        print("Conectado a MongoDB correctamente.")
+        collection = db["paises"]
+
+        return collection
+    except Exception as e:
+        print(f"Error al conectar a MongoDB: {e}")
+        return None
+    
+def obtener_paises_americas():
+    client = MongoClient("mongodb://localhost:27017/")
+    db = client["paises_db"]
+    paises_collection = db["paises"] 
+
+
+    filtro = {"region": "Americas"}
+    paises = paises_collection.find(filtro)
+
+
+    print("Países en la región 'Americas':")
+    for pais in paises:
+        print(f"Nombre: {pais['nombrePais']}, Capital: {pais['capitalPais']}, Población: {pais['poblacion']}")
+
+    client.close()
+
+def obtener_paises_grandes_americas():
+
+    client = MongoClient("mongodb://localhost:27017/")
+    db = client["paises_db"]
+    paises_collection = db["paises"]  
+
+    filtro = {"region": "Americas", "poblacion": {"$gt": 100000000}}
+    paises = paises_collection.find(filtro)
+
+    print("Países en 'Americas' con población mayor a 100 millones:")
+    for pais in paises:
+        print(f"Nombre: {pais['nombrePais']}, Capital: {pais['capitalPais']}, Población: {pais['poblacion']}")
+
+    client.close()
+
+def obtener_paises_no_africa():
+    client = MongoClient("mongodb://localhost:27017/")
+    db = client["paises_db"]  
+    paises_collection = db["paises"] 
+
+    filtro = {"region": {"$ne": "Africa"}}
+    paises = paises_collection.find(filtro)
+
+    print("Países en regiones distintas de 'Africa':")
+    for pais in paises:
+        print(f"Nombre: {pais['nombrePais']}, Región: {pais['region']}, Capital: {pais['capitalPais']}")
+
+    client.close()
+
+def actualizar_egipto():
+
+    client = MongoClient("mongodb://localhost:27017/")
+    db = client["paises_db"]  
+    paises_collection = db["paises"] 
+
+    filtro = {"nombrePais": "Egypt"}
+
+    nueva_data = {"$set": {"nombrePais": "Egipto", "poblacion": 95000000}}
+
+    resultado = paises_collection.update_one(filtro, nueva_data)
+
+    if resultado.modified_count > 0:
+        print("Documento actualizado correctamente.")
+    else:
+        print("No se encontró el país 'Egypt' o ya estaba actualizado.")
+
+    client.close()
+
+def eliminar_pais_por_codigo():
+    
+    client = MongoClient("mongodb://localhost:27017/")
+    db = client["paises_db"]  
+    paises_collection = db["paises"]  
+
+    filtro = {"codigoPais": "258"}
+    
+    resultado = paises_collection.delete_one(filtro)
+
+    if resultado.deleted_count > 0:
+        print("Documento eliminado correctamente.")
+    else:
+        print("No se encontró un país con código 258.")
+
+    client.close()
+
+def obtener_paises_poblacion_media():
+
+    client = MongoClient("mongodb://localhost:27017/")
+    db = client["paises_db"]  
+    paises_collection = db["paises"]  
+
+    filtro = {"poblacion": {"$gt": 50000000, "$lt": 150000000}}
+    paises = paises_collection.find(filtro)
+
+    print("Países con población entre 50M y 150M:")
+    for pais in paises:
+        print(f"Nombre: {pais['nombrePais']}, Capital: {pais['capitalPais']}, Población: {pais['poblacion']}")
+
+    client.close()
+
+def obtener_paises_ordenados():
+
+    client = MongoClient("mongodb://localhost:27017/")
+    db = client["paises_db"]  
+    paises_collection = db["paises"]  
+
+    paises = paises_collection.find().sort("nombrePais", 1)
+
+    print("Lista de países ordenados por nombre (Ascendente):")
+    for pais in paises:
+        print(f"Nombre: {pais['nombrePais']}, Capital: {pais['capitalPais']}, Región: {pais['region']}")
+
+    client.close()
+
+def obtener_paises_saltando():
+    client = MongoClient("mongodb://localhost:27017/")
+    db = client["paises_db"] 
+    paises_collection = db["paises"] 
+
+    paises = paises_collection.find().skip(3)
+
+    print("Lista de países (saltando los primeros 3):")
+    for pais in paises:
+        print(f"Nombre: {pais['nombrePais']}, Capital: {pais['capitalPais']}, Región: {pais['region']}")
+    client.close()
+
+def buscar_paises_por_letra():
+
+    client = MongoClient("mongodb://localhost:27017/")
+    db = client["paises_db"]  
+    paises_collection = db["paises"] 
+
+    filtro = {"nombrePais": {"$regex": "^A", "$options": "i"}}
+    paises = paises_collection.find(filtro)
+
+    print("Países cuyo nombre empieza con 'A':")
+    for pais in paises:
+        print(f"Nombre: {pais['nombrePais']}, Capital: {pais['capitalPais']}")
+    client.close()
+
+def crear_indice_codigo():
+    
+    client = MongoClient("mongodb://localhost:27017/")
+    db = client["paises_db"]  
+    paises_collection = db["paises"]  
+
+    resultado = paises_collection.create_index("codigoPais", unique=True)
+
+    print(f"Índice creado: {resultado}")
+
+    client.close()
+
+
+def main():
+    collection = conectar_mongo()
+    for code in range(100, 200):
+
+        country_data = fetch_country_data(code)
+        if not country_data:
+            continue
+        
+        print(country_data)
+        collection.insert_one(collection)
+
+
+if __name__ == "__main__":
+    main()
